@@ -36,7 +36,7 @@ public class BankImpl implements Bank {
             throw new NullPointerException("null args not allowed");
         }
         if (!customers.contains(customer)) {
-            throw new AccountCreateException("Customer does not exists");
+            throw new AccountCreateException("Customer does not belong to this bank");
         }
         Account account = new Account(accountIDGen.getNext(), customer, currency, new Money(0.0));
         customer.addAccount(account);
@@ -45,12 +45,12 @@ public class BankImpl implements Bank {
 
     @Override
     public Operation transferMoney(Account debitAccount, Account creditAccount, Money debitAmount) {
-        Money debitMoney = debitAccount.getBalance();
-        if (debitMoney.isLessThan(debitAmount)) {
+        Money debitAccountMoney = debitAccount.getBalance();
+        if (debitAccountMoney.isLessThan(debitAmount)) {
             throw new InsufficientFundsException("Insufficient funds");
         }
 
-        debitAccount.setBalance(debitMoney.substract(debitAmount));
+        debitAccount.setBalance(debitAccountMoney.substract(debitAmount));
 
         if (debitAccount.getCurrency().equals(creditAccount.getCurrency())) {
             creditAccount.setBalance(creditAccount.getBalance().add(debitAmount));
@@ -65,15 +65,18 @@ public class BankImpl implements Bank {
     @Override
     public Money getBalance(Currency currency) {
         Money total = new Money(0.0);
+        List<Account> accounts = new ArrayList<>();
 
         for (Customer c : customers) {
-            for (Account a : c.getAccounts()) {
-                if (a.getCurrency().equals(currency)) {
-                    total = total.add(a.getBalance());
-                } else {
-                    Money mon = currencyConverter.convert(a.getCurrency(), currency, a.getBalance());
-                    total = total.add(mon);
-                }
+            accounts.addAll(c.getAccounts());
+        }
+
+        for (Account a : accounts) {
+            if (a.getCurrency().equals(currency)) {
+                total = total.add(a.getBalance());
+            } else {
+                Money mon = currencyConverter.convert(a.getCurrency(), currency, a.getBalance());
+                total = total.add(mon);
             }
         }
         return total;
